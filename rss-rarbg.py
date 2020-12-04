@@ -20,8 +20,11 @@ now = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 if (len(sys.argv) < 2):
     rssfeed='https://rarbgmirror.com/rssdd.php?category=18;41;49'
-    feedxml=requests.get(rssfeed)
-#    feedxml=urllib.request.urlopen(rssfeed).read()
+    try:
+    	feedxml=requests.get(rssfeed)
+    except:
+        print("Unable to connect to feed.")
+        sys.exit()
     feed = feedparser.parse(feedxml.text)
 else:
     with open(sys.argv[1], 'r') as myfile:
@@ -67,12 +70,12 @@ for ff in feed.entries:
     for series in watch:
         eps_re = series[0].match(ff.title)
         if eps_re:
-            if DEBUG and COUNT < 3:
-                OUTSTR += '\nDEBUG +matched eps: '+ ff.title +' | '+ ff.published     ################################
+            if DEBUG:
+                OUTSTR += '\nDEBUG matched eps: '+ ff.title +' | '+ ff.published     ################################
                 OUTPUT = 1
             if any(compiled_reg.match(ff.title) for compiled_reg in deny):
                 if DEBUG:
-                    OUTSTR += '\nDEBUG ++denied: ' + ff.title          ################################
+                    OUTSTR += '\n\tdenied: ' + ff.title          ################################
                     OUTPUT = 1
                 break
             else:
@@ -87,25 +90,26 @@ for ff in feed.entries:
                 with open(logfile) as lf:
                     for ll in lf:
                         if re.search(eps, ll, re.IGNORECASE):
-                            if DEBUG and COUNT < 3:
-                                OUTSTR += '\nDEBUG ++repeat: ' + ff.title +' | '+ str(COUNT)      ################################
-                                OUTPUT = 1
+#                            if DEBUG and COUNT < 2:
+                            if DEBUG:
+#                                OUTSTR += '\n\trepeat: ' + ff.title +' | '+ str(COUNT)      ################################
+                                OUTPUT = 0  # if repeat, suppress DEBUG output
                             flag = 0
                             break
                 if flag:
                     if DEBUG:
-                        OUTSTR += '\nDEBUG ++get: ' + ff.title      ################################
+                        OUTSTR += '\n\tget: ' + ff.title      ################################
                         OUTPUT = 1
                     result=subprocess.check_output("deluge-console add '" + ff.link + "'",  shell=True)
                     if "Torrent added!" in result.decode("utf-8"):
                         if DEBUG:
-                            OUTSTR += '\nDEBUG ++++BT OK: ' + ff.title          ################################
+                            OUTSTR += '\n\t\tBT OK: ' + ff.title          ################################
                             OUTPUT = 1
                         with open(logfile,  'a') as lf: 
                             lf.write(eps + ' %%%% ' + now + ' @' + ff.published + '\n')
                     else:
                         if DEBUG:
-                            OUTSTR += '\nDEBUG ++++ NOT ADDED:\n' +  result.decode("utf-8")     ################################
+                            OUTSTR += '\n\t\tNOT ADDED:\n' +  result.decode("utf-8")     ################################
                             OUTPUT = 1
             break
 
